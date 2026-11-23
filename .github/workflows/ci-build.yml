@@ -1,0 +1,32 @@
+name: Build & Verify PulseProxy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Frontend Dependencies
+        run: npm install
+
+      - name: Build Frontend (TypeScript + Vite)
+        run: npm run build
+
+      - name: Check Rust Core (Tauri v2 + Win32 Radar + Proxy Engine)
+        working-directory: src-tauri
+        run: cargo check
