@@ -1207,7 +1207,7 @@ ${proxies
                         </span>
                       </div>
                       <div className="text-xs text-slate-400 font-mono truncate mt-0.5" title={app.full_path}>
-                        {app.folder_scope ? `📁 Вся папка: ${app.folder_path}\\*` : app.full_path}
+                        {app.folder_scope ? `[Папка] ${app.folder_path}\\*` : app.full_path}
                       </div>
                     </div>
                   </div>
@@ -1255,7 +1255,7 @@ ${proxies
                       <optgroup label="Цепочки Прокси (Proxy Chains)" className="bg-slate-900">
                         {chains.map((c) => (
                           <option key={c.id} value={c.id}>
-                            ⛓️ {c.name} ({c.chain_type})
+                            [Chain] {c.name} ({c.chain_type})
                           </option>
                         ))}
                       </optgroup>
@@ -1402,7 +1402,7 @@ ${proxies
                                       ? '→'
                                       : chain.chain_type === 'redundancy'
                                       ? '⇄'
-                                      : '⚖️'}
+                                      : '/'}
                                   </span>
                                 )}
                               </React.Fragment>
@@ -1506,7 +1506,7 @@ ${proxies
                       <optgroup label="Цепочки (Chains)">
                         {chains.map((c) => (
                           <option key={c.id} value={c.id}>
-                            ⛓️ {c.name}
+                            [Chain] {c.name}
                           </option>
                         ))}
                       </optgroup>
@@ -2276,7 +2276,7 @@ ${proxies
                 <optgroup label="Цепочки Прокси (Chains)">
                   {chains.map((c) => (
                     <option key={c.id} value={c.id}>
-                      ⛓️ Цепочка: {c.name}
+                      [Chain] Цепочка: {c.name}
                     </option>
                   ))}
                 </optgroup>
