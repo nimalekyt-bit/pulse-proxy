@@ -30,7 +30,6 @@ impl FakeDnsResolver {
             domain_to_ip: HashMap::new(),
             hit_counts: HashMap::new(),
         };
-        // Pre-populate common domains for instant diagnostics
         resolver.allocate_or_get("api.openai.com");
         resolver.allocate_or_get("claude.ai");
         resolver.allocate_or_get("gateway.discord.gg");
@@ -56,6 +55,13 @@ impl FakeDnsResolver {
         self.hit_counts.insert(normalized, 1);
 
         ip_str
+    }
+
+    pub fn flush(&mut self) {
+        self.next_offset = 0;
+        self.ip_to_domain.clear();
+        self.domain_to_ip.clear();
+        self.hit_counts.clear();
     }
 
     pub fn lookup_domain(&self, fake_ip: &str) -> Option<String> {
