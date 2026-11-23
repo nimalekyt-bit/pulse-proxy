@@ -2,9 +2,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::Ipv4Addr;
 
-/// FakeIP DNS Pool (RFC 2544 benchmark subnet 198.18.0.0/15, standard for transparent proxy DNS)
-/// Eliminates DNS leaks by returning a synthetic IPv4 immediately to the intercepted process
-/// and resolving the real domain remotely through the upstream SOCKS5/HTTPS proxy.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FakeIpEntry {
     pub fake_ip: String,
@@ -23,18 +20,13 @@ pub struct FakeDnsResolver {
 impl FakeDnsResolver {
     pub fn new() -> Self {
         let base_ip = u32::from(Ipv4Addr::new(198, 18, 0, 10));
-        let mut resolver = Self {
+        Self {
             base_ip,
             next_offset: 0,
             ip_to_domain: HashMap::new(),
             domain_to_ip: HashMap::new(),
             hit_counts: HashMap::new(),
-        };
-        resolver.allocate_or_get("api.openai.com");
-        resolver.allocate_or_get("claude.ai");
-        resolver.allocate_or_get("gateway.discord.gg");
-        resolver.allocate_or_get("rtc-fra04.discord.gg");
-        resolver
+        }
     }
 
     pub fn allocate_or_get(&mut self, domain: &str) -> String {

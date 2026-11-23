@@ -13,6 +13,52 @@ pub struct DetectedApp {
     pub category: String,
 }
 
+/// Builds a fast lookup table of every active PID -> executable name for real socket attribution
+pub fn build_pid_to_exe_map() -> HashMap<u32, String> {
+    #[cfg(target_os = "windows")]
+    {
+        use windows_sys::Win32::Foundation::{CloseHandle, INVALID_HANDLE_VALUE};
+        use windows_sys::Win32::System::Diagnostics::ToolHelp::{
+            CreateToolhelp32Snapshot, PROCESSENTRY32W, Process32FirstW, Process32NextW,
+            TH32CS_SNAPPROCESS,
+        };
+
+        let mut map = HashMap::new();
+        unsafe {
+            let snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+            if snapshot == INVALID_HANDLE_VALUE {
+                return map;
+            }
+            let mut entry: PROCESSENTRY32W = std::mem::zeroed();
+            entry.dwSize = std::mem::size_of::<PROCESSENTRY32W>() as u32;
+
+            if Process32FirstW(snapshot, &mut entry) != 0 {
+                loop {
+                    let pid = entry.th32ProcessID;
+                    let len = entry
+                        .szExeFile
+                        .iter()
+                        .position(|&c| c == 0)
+                        .unwrap_or(entry.szExeFile.len());
+                    let exe_name = String::from_utf16_lossy(&entry.szExeFile[..len]);
+                    map.insert(pid, exe_name);
+
+                    if Process32NextW(snapshot, &mut entry) == 0 {
+                        break;
+                    }
+                }
+            }
+            CloseHandle(snapshot);
+        }
+        map
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        HashMap::new()
+    }
+}
+
 /// Scans running Windows processes via Win32 ToolHelp32 API and groups them by executable name
 pub fn scan_running_apps() -> Vec<DetectedApp> {
     #[cfg(target_os = "windows")]
@@ -49,7 +95,7 @@ pub fn scan_running_apps() -> Vec<DetectedApp> {
 
                     if !is_noise_system_process(&exe_name) {
                         let mut full_path = exe_name.clone();
-                        let mut folder_path = String::from("C:\\Program Files");
+                        let mut folder_path = String::new();
 
                         let h_proc = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid);
                         if !h_proc.is_null() {
@@ -151,7 +197,8 @@ fn friendly_app_name(exe_name: &str) -> String {
         "cs2.exe" => "Counter-Strike 2".to_string(),
         "dota2.exe" => "Dota 2".to_string(),
         "code.exe" => "Visual Studio Code".to_string(),
-        "cursor.exe" => "Cursor AI IDE".to_string(),
+        "cursor.exe" => "Cursor IDE".to_string(),
+        "antigravity.exe" => "Antigravity IDE".to_string(),
         "obs64.exe" => "OBS Studio".to_string(),
         "javaw.exe" | "java.exe" => "Java / Minecraft Runtime".to_string(),
         _ => {
@@ -184,7 +231,7 @@ fn classify_app(exe_name: &str, folder_path: &str) -> String {
         "Игры".to_string()
     } else if matches!(
         lower.as_str(),
-        "code.exe" | "cursor.exe" | "node.exe" | "python.exe" | "docker.exe"
+        "code.exe" | "cursor.exe" | "antigravity.exe" | "node.exe" | "python.exe" | "docker.exe" | "git.exe"
     ) {
         "Разработка & AI".to_string()
     } else {

@@ -1,11 +1,17 @@
+pub mod config_store;
 pub mod fake_dns;
+pub mod net_telemetry;
 pub mod ppx_profile;
 pub mod process_radar;
 pub mod proxy_engine;
 
+use config_store::{
+    PulseProxyConfig, discover_real_local_proxies, load_config_from_disk, save_config_to_disk,
+};
 use fake_dns::{FakeDnsResolver, FakeIpEntry};
+use net_telemetry::{NetTelemetryTracker, SystemNetworkSnapshot};
 use ppx_profile::{RuleMatchTestResult, RoutingRule, evaluate_connection, export_proxifier_ppx};
-use process_radar::{DetectedApp, scan_running_apps};
+use process_radar::{DetectedApp, build_pid_to_exe_map, scan_running_apps};
 use proxy_engine::{
     ProxyChain, ProxyDiagnosticReport, ProxyNode, ProxyProbeResult, parse_clipboard_proxies,
     probe_proxy_node, run_full_proxy_diagnostics,
@@ -15,11 +21,37 @@ use tauri::State;
 
 pub struct AppEngineState {
     pub fake_dns: Mutex<FakeDnsResolver>,
+    pub telemetry: Mutex<NetTelemetryTracker>,
 }
 
 #[tauri::command]
 fn get_running_processes() -> Vec<DetectedApp> {
     scan_running_apps()
+}
+
+#[tauri::command]
+fn get_network_snapshot(state: State<'_, AppEngineState>) -> SystemNetworkSnapshot {
+    let pid_map = build_pid_to_exe_map();
+    if let Ok(mut tracker) = state.telemetry.lock() {
+        tracker.sample_snapshot(&pid_map)
+    } else {
+        NetTelemetryTracker::new().sample_snapshot(&pid_map)
+    }
+}
+
+#[tauri::command]
+fn load_user_config() -> PulseProxyConfig {
+    load_config_from_disk()
+}
+
+#[tauri::command]
+fn save_user_config(config: PulseProxyConfig) -> Result<(), String> {
+    save_config_to_disk(&config)
+}
+
+#[tauri::command]
+fn discover_local_proxies() -> Vec<ProxyNode> {
+    discover_real_local_proxies()
 }
 
 #[tauri::command]
@@ -102,9 +134,14 @@ pub fn run() {
     tauri::Builder::default()
         .manage(AppEngineState {
             fake_dns: Mutex::new(FakeDnsResolver::new()),
+            telemetry: Mutex::new(NetTelemetryTracker::new()),
         })
         .invoke_handler(tauri::generate_handler![
             get_running_processes,
+            get_network_snapshot,
+            load_user_config,
+            save_user_config,
+            discover_local_proxies,
             probe_proxy,
             run_proxy_checker,
             parse_proxies_bulk,

@@ -8,7 +8,15 @@ export interface DetectedApp {
   category: string;
 }
 
+export interface SavedAppBinding {
+  exe_name: string;
+  enabled: boolean;
+  folder_scope: boolean;
+  proxy_id: string;
+}
+
 export interface AppRuleBinding {
+  pid: number;
   exe_name: string;
   name: string;
   full_path: string;
@@ -16,10 +24,9 @@ export interface AppRuleBinding {
   category: string;
   instance_count: number;
   enabled: boolean;
-  folder_scope: boolean; // Route all child .exe files inside folder_path
-  proxy_id: string;      // 'direct' | 'block' | proxyNode.id | proxyChain.id
+  folder_scope: boolean;
+  proxy_id: string; // 'direct' | 'block' | proxyNode.id | proxyChain.id
   active_conns: number;
-  speed_mbps: number;
 }
 
 export interface ProxyNode {
@@ -73,11 +80,11 @@ export interface RoutingRule {
   id: string;
   name: string;
   enabled: boolean;
-  process_pattern: string; // e.g. "*", "chrome.exe; firefox.exe", "C:\\Games\\*"
-  target_hosts: string;    // e.g. "*.openai.com, 192.168.0.0/16"
-  ports: string;           // e.g. "*", "80; 443", "27015-27050"
-  protocol: 'ANY' | 'TCP' | 'UDP';
-  action: string;          // proxy.id | chain.id | 'direct' | 'block'
+  process_pattern: string;
+  target_hosts: string;
+  ports: string;
+  protocol: 'ANY' | 'TCP' | 'UDP' | string;
+  action: string;
   is_builtin?: boolean;
 }
 
@@ -90,7 +97,7 @@ export interface RuleMatchTestResult {
 }
 
 export interface EngineAdvancedOptions {
-  dns_mode: 'auto' | 'remote_fakeip' | 'local_first';
+  dns_mode: 'auto' | 'remote_fakeip' | 'local_first' | string;
   dns_exclusion_list: string;
   fake_ip_subnet: string;
   proxify_services_and_users: boolean;
@@ -100,21 +107,40 @@ export interface EngineAdvancedOptions {
   kill_switch_on_failure: boolean;
 }
 
+export interface PulseProxyConfig {
+  proxies: ProxyNode[];
+  chains: ProxyChain[];
+  rules: RoutingRule[];
+  default_rule_action: string;
+  app_bindings: Record<string, SavedAppBinding>;
+  options: EngineAdvancedOptions;
+}
+
 export interface FakeIpEntry {
   fake_ip: string;
   domain: string;
   hits: number;
 }
 
-export interface LiveConnectionEvent {
+export interface RealSocketConnection {
   id: string;
-  timestamp: string;
+  pid: number;
   process_name: string;
-  protocol: 'TCP' | 'UDP' | 'DNS';
-  destination: string;
-  fake_ip?: string;
-  route_label: string;
-  route_type: 'proxy' | 'chain' | 'direct' | 'block';
-  latency_ms: number;
-  bytes_Transferred: string;
+  protocol: string;
+  local_addr: string;
+  local_port: number;
+  remote_addr: string;
+  remote_port: number;
+  state: string;
+}
+
+export interface SystemNetworkSnapshot {
+  download_bytes_per_sec: number;
+  upload_bytes_per_sec: number;
+  total_rx_bytes: number;
+  total_tx_bytes: number;
+  active_tcp_count: number;
+  active_udp_count: number;
+  connections: RealSocketConnection[];
+  per_exe_connections: Record<string, number>;
 }
